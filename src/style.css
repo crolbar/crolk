@@ -1,0 +1,22 @@
+
+#window {
+    background-color: rgb(10, 10, 10);
+}
+
+#button_close {
+    font-size: 1.2rem;
+    color: white;
+    background-color: rgba(0, 0, 0, 0);
+}
+#button_close:hover {
+    background-color: rgb(24, 24, 24);
+}
+
+#button_count {
+    margin: 20px 50px 0px 50px;
+    color: white;
+    background-color: black;
+}
+#button_count:hover {
+    background-color: rgb(24, 24, 24);
+}

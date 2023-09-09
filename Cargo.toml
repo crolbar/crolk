@@ -1,0 +1,16 @@
+[package]
+name = "crolk"
+version = "0.1.0"
+edition = "2021"
+categories = [ "gui" ]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gtk = "0.15"
+tray-item = { version = "0.8", features = [ "libappindicator" ] }
+glib = "0.18.1"
+
+
+chrono = "0.4"
+

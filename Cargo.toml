@@ -13,4 +13,4 @@ glib = "0.18.1"
 
 
 chrono = "0.4"
-
+notify-rust = "4.9"

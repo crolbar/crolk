@@ -3,20 +3,28 @@
     background-color: rgb(10, 10, 10);
 }
 
-#button_close {
+#label {
+    font-size: 2rem;
+    color: white;
+}
+
+combobox button.combo {
+    color: white;
+    background-color: rgb(10, 10, 10);
+}
+
+combobox box arrow {
+    -gtk-icon-source: none;
+    color: rgb(10, 10, 10);
+}
+
+button {
     font-size: 1.2rem;
     color: white;
     background-color: rgba(0, 0, 0, 0);
 }
-#button_close:hover {
-    background-color: rgb(24, 24, 24);
-}
 
-#button_count {
-    margin: 20px 50px 0px 50px;
-    color: white;
-    background-color: black;
-}
-#button_count:hover {
-    background-color: rgb(24, 24, 24);
+#t_label {
+    margin-right: 25px;
+    margin-left: -25px;
 }

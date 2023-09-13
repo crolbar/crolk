@@ -244,7 +244,14 @@ fn build_ui(window: &gtk::ApplicationWindow) {
 
         let alarm_box: gtk::Box = gtk::Box::new(Orientation::Vertical, 5); 
         { // ALARM
-            let save_file: Value = toml::from_str(read_to_string(home_dir().unwrap().join(".config/crolk/presets.toml")).expect("Failed to read presets.toml").as_str()).expect("Failed to parse TOML");
+            let path = home_dir().unwrap().join(".config/crolk/presets.toml");
+
+            if !path.exists() {
+                fs::create_dir_all(home_dir().unwrap().join(".config/crolk")).unwrap();
+                File::create(&path).unwrap();
+            }
+
+            let save_file: Value = toml::from_str(read_to_string(path).expect("Failed to read presets.toml").as_str()).expect("Failed to parse TOML");
             if let Some(table) = save_file.as_table() {
                 for (key, entry) in table.iter() {
                     if let (Some(hour), Some(min)) = (
@@ -253,9 +260,9 @@ fn build_ui(window: &gtk::ApplicationWindow) {
                     ) {
                         let alarm_preset_box = create_alarm_box(hour as u32, min as u32, true, key.clone());
                         alarm_box.add(&alarm_preset_box);
-                    }
+                    } 
                 }
-            }
+            } 
 
             let button_add_box = gtk::Box::new(Orientation::Horizontal, 0);
             {
@@ -424,7 +431,7 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
             let hour = hours_comb.active_text().unwrap();
             let min = min_comb.active_text().unwrap();
             let file_path = home_dir().unwrap().join(".config/crolk/presets.toml");
-            let key = io::BufReader::new(File::open(&file_path).unwrap()).lines().last().unwrap().unwrap().split_once(" ").unwrap().0.parse::<u32>().unwrap();
+            let key = io::BufReader::new(File::open(&file_path).unwrap()).lines().last().unwrap_or_else(|| Ok("0 ".to_string())).unwrap().split_once(" ").unwrap().0.parse::<u32>().unwrap();
 
             key_num.store(key + 1, std::sync::atomic::Ordering::Relaxed);
             write!(std::fs::OpenOptions::new().write(true).append(true).open(file_path).unwrap(), "\n{} = {{hour = {}, min = {}}}",&key + 1, hour, min).expect("Failed to write to presets file!");  

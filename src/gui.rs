@@ -3,6 +3,10 @@ use gtk::traits::LabelExt;
 use std::sync::{Arc, Mutex, mpsc};
 use std::cell::RefCell;
 use glib::clone;
+use std::fs::{self, read_to_string, File};
+use toml::Value;
+use dirs::home_dir;
+use std::io::{self, Write, BufRead};
 
 mod stopwatch;
 use stopwatch::Stopwatch;
@@ -66,6 +70,7 @@ fn build_ui(window: &gtk::ApplicationWindow) {
 
             clock_box.set_valign(gtk::Align::Center);
             clock_box.add(&clock_label);
+            clock_box.show_all();
         }
 
 
@@ -136,6 +141,11 @@ fn build_ui(window: &gtk::ApplicationWindow) {
             stopwatch_box.add(&sw_button_reset);
             stopwatch_box.add(&sw_button_lap);
             stopwatch_box.add(&stopwatch_label);
+            stopwatch_box.show_all();
+
+            sw_button_lap.hide();
+            sw_button_pause.hide();
+            sw_button_reset.hide();
         }
 
 
@@ -222,36 +232,48 @@ fn build_ui(window: &gtk::ApplicationWindow) {
             timer_box.add(&t_button_resume);
             timer_box.add(&t_button_stop);
             timer_box.add(&timer_label);
+            timer_box.show_all();
+            t_button_pause.hide();
+            t_button_resume.hide();
+            t_button_stop.hide();
         }
 
         
-        let alarm = Alarm::new(1);
-        let arc_alarm = Arc::new(Mutex::new(alarm));
-        let a_switch = gtk::Switch::new();
+
+
+
         let alarm_box: gtk::Box = gtk::Box::new(Orientation::Vertical, 5); 
         { // ALARM
-            let alarm_preset_box = create_alarm_box(1, &arc_alarm, &a_switch);
-            
- 
+            let save_file: Value = toml::from_str(read_to_string(home_dir().unwrap().join(".config/crolk/presets.toml")).expect("Failed to read presets.toml").as_str()).expect("Failed to parse TOML");
+            if let Some(table) = save_file.as_table() {
+                for (key, entry) in table.iter() {
+                    if let (Some(hour), Some(min)) = (
+                        entry.get("hour").and_then(|v| v.as_integer()),
+                        entry.get("min").and_then(|v| v.as_integer()),
+                    ) {
+                        let alarm_preset_box = create_alarm_box(hour as u32, min as u32, true, key.clone());
+                        alarm_box.add(&alarm_preset_box);
+                    }
+                }
+            }
+
             let button_add_box = gtk::Box::new(Orientation::Horizontal, 0);
             {
                 let button_add = gtk::Button::with_label("+");
-                button_add.connect_clicked(clone!(@strong alarm_box, @strong button_add_box, @strong arc_alarm, @strong a_switch => move |_| {
-                    let alarm_preset_box = create_alarm_box(1, &arc_alarm, &a_switch);
+                button_add.connect_clicked(clone!(@strong alarm_box, @strong button_add_box => move |_| {
+                    let alarm_preset_box = create_alarm_box(0, 0, false, String::from("0"));
                     alarm_box.add(&alarm_preset_box);
                     alarm_box.remove(&button_add_box);
                     alarm_box.add(&button_add_box);
-                    alarm_box.show_all();
                 }));
                 
                 button_add_box.add(&button_add);
+                button_add_box.show_all();
             }
             
-            
-            alarm_box.add(&alarm_preset_box);
             alarm_box.add(&button_add_box);
+            alarm_box.show();
         }
-
 
 
 
@@ -264,8 +286,7 @@ fn build_ui(window: &gtk::ApplicationWindow) {
         let button_close = Button::with_label("X");
         button_close.set_widget_name("button_close");
         button_close.connect_clicked(clone!(@strong window => move |_| {
-            window.close();
-            // std::process::exit(0);
+            window.close()
         }));
 
         let button_clock = Button::with_label("Clock");
@@ -306,12 +327,12 @@ fn build_ui(window: &gtk::ApplicationWindow) {
         
 
 
-        // top_box.set_halign(gtk::Align::Start);
         top_box.add(&button_alarm);
         top_box.add(&button_timer);
         top_box.add(&button_stopwatch);
         top_box.add(&button_clock);
         top_box.add(&button_close);
+        top_box.show_all();
     }
 
 
@@ -322,25 +343,16 @@ fn build_ui(window: &gtk::ApplicationWindow) {
     main_box.add(&timer_box);
     main_box.add(&alarm_box);
     window.add(&main_box);
-    window.show_all();
+    main_box.show();
+    window.show();
 
 
-    stopwatch_box.hide();
+    clock_box.hide();
     timer_box.hide();
-    alarm_box.hide();
+    stopwatch_box.hide();
 
 
-    t_button_pause.hide();
-    t_button_resume.hide();
-    t_button_stop.hide();
-    
 
-    sw_button_lap.hide();
-    sw_button_pause.hide();
-    sw_button_reset.hide();
-
-
-    // let a_switch_clone = a_switch.clone();
     glib::timeout_add_local(std::time::Duration::from_millis(80), move || {
     // CLOCK
         clock_label.set_text(&current_time().as_str());
@@ -353,30 +365,16 @@ fn build_ui(window: &gtk::ApplicationWindow) {
         timer_label.set_text(timer.get_remaining_time().as_str());
         if timer.get_remaining_time() == "00:00:00" { t_button_start.show(); t_button_stop.hide(); t_button_pause.hide() }
 
-    // ALARM
-        if !arc_alarm.lock().unwrap().get_state() { a_switch.set_state(false) }
-
         glib::ControlFlow::Continue
     });
-
 }
 
 
-fn create_alarm_box(_id: u8, arc_alarm: &Arc<Mutex<Alarm>>, a_switch: &gtk::Switch) -> gtk::Box {
+fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gtk::Box {
+    let alarm = Alarm::new();
+    let arc_alarm = Arc::new(Mutex::new(alarm));
     let alarm_preset_box = gtk::Box::new(Orientation::Horizontal, 5);
     {
-
-        let day_comb = gtk::ComboBoxText::new();
-        let day_label = gtk::Label::new(Some("D"));
-        day_label.set_widget_name("t_label");
-        day_comb.append_text("Monday");
-        day_comb.append_text("Tuesday");
-        day_comb.append_text("Wednesday");
-        day_comb.append_text("Thursday");
-        day_comb.append_text("Friday");
-        day_comb.append_text("Saturday");
-        day_comb.append_text("Sunday");
-
         let hours_comb = gtk::ComboBoxText::new();
         let hour_label = gtk::Label::new(Some("H"));
         hour_label.set_widget_name("t_label");
@@ -387,44 +385,81 @@ fn create_alarm_box(_id: u8, arc_alarm: &Arc<Mutex<Alarm>>, a_switch: &gtk::Swit
         min_label.set_widget_name("t_label");
         for i in 0..=59 { min_comb.append_text(i.to_string().as_str()); }
 
-        day_comb.set_active(Some(0));
-        hours_comb.set_active(Some(0));
-        min_comb.set_active(Some(0));
+        hours_comb.set_active(Some(hour));
+        min_comb.set_active(Some(min));
 
+        let stop_button = gtk::Button::with_label("Stop");
+        let start_button = gtk::Button::with_label("Start");
+        let del_button = gtk::Button::with_label("-");
+        let save_button = gtk::Button::with_label("Save");
 
+        start_button.connect_clicked(clone!(@strong stop_button, @strong arc_alarm, @strong hours_comb, @strong min_comb => move |start_button| {
+            let time = format!("{} {}", hours_comb.active_text().unwrap(), min_comb.active_text().unwrap());
+            arc_alarm.lock().unwrap().start(time);
+            
+            glib::timeout_add_local(std::time::Duration::from_millis(800),clone!(@strong start_button, @strong stop_button, @strong arc_alarm => move || match arc_alarm.lock().unwrap().get_state() {
+                true => glib::ControlFlow::Continue,
+                false => {
+                    stop_button.hide();
+                    start_button.show();
+                    glib::ControlFlow::Break
+                }
+            }));
 
-        a_switch.connect_changed_active(clone!(@strong arc_alarm, @strong hours_comb, @strong min_comb, @strong day_comb => move |a_switch| {
-            let is_active = a_switch.is_active();
-            let day = match day_comb.active_text().unwrap().as_str() {
-                "Monday" => 1,
-                "Tuesday" => 2,
-                "Wednesday" => 3,
-                "Thursday" => 4,
-                "Friday" => 5,
-                "Saturday" => 6,
-                "Sunday" => 7,
-                _ => return
-            };  
-            if is_active {
-                let time = {
-                    format!("{}{}{}", hours_comb.active_text().unwrap().parse::<u32>().unwrap(), min_comb.active_text().unwrap().parse::<u32>().unwrap(), day)
-                    .parse::<u32>().expect("crashed at trying to convert time as string to time as u32")};
-                arc_alarm.lock().unwrap().start(time);
-            } else {
-                arc_alarm.lock().unwrap().stop();
-            }
+            stop_button.show();
+            start_button.hide()
         }));
 
 
-        alarm_preset_box.set_halign(gtk::Align::Center);
+        stop_button.connect_clicked(clone!(@strong start_button, @strong arc_alarm => move |stop_button| {
+            arc_alarm.lock().unwrap().stop();
+            
+            stop_button.hide();
+            start_button.show()
+        }));
 
-        alarm_preset_box.add(&day_comb);
-        alarm_preset_box.add(&day_label);
+
+        let key_num = Arc::new(std::sync::atomic::AtomicU32::new(key_num.parse::<u32>().unwrap()));
+        save_button.connect_clicked(clone!(@strong hours_comb, @strong min_comb, @strong key_num => move |save_button| {
+            let hour = hours_comb.active_text().unwrap();
+            let min = min_comb.active_text().unwrap();
+            let file_path = home_dir().unwrap().join(".config/crolk/presets.toml");
+            let key = io::BufReader::new(File::open(&file_path).unwrap()).lines().last().unwrap().unwrap().split_once(" ").unwrap().0.parse::<u32>().unwrap();
+
+            key_num.store(key + 1, std::sync::atomic::Ordering::Relaxed);
+            write!(std::fs::OpenOptions::new().write(true).append(true).open(file_path).unwrap(), "\n{} = {{hour = {}, min = {}}}",&key + 1, hour, min).expect("Failed to write to presets file!");  
+
+            save_button.hide();
+        }));
+        
+        del_button.set_widget_name("del_button");
+        del_button.connect_clicked(clone!(@strong alarm_preset_box, @strong arc_alarm, @strong key_num => move |_| {
+            unsafe { alarm_preset_box.destroy() }
+            arc_alarm.lock().unwrap().stop();
+
+
+            let file_path = home_dir().unwrap().join(".config/crolk/presets.toml");
+            let contents = fs::read_to_string(&file_path).unwrap();
+            let filtered_contents: String = contents.lines().filter(|line| {
+                    if let Some((key, _)) = line.trim().split_once('=') {
+                        return key.trim() != key_num.load(std::sync::atomic::Ordering::Relaxed).to_string()
+                    }
+                    true 
+                }).collect::<Vec<&str>>().join("\n");
+            fs::write(file_path, filtered_contents).unwrap();
+        }));
+            
+
+        alarm_preset_box.add(&del_button);
         alarm_preset_box.add(&hours_comb);
         alarm_preset_box.add(&hour_label);
         alarm_preset_box.add(&min_comb);
         alarm_preset_box.add(&min_label);
-        alarm_preset_box.add(a_switch);
+        alarm_preset_box.add(&start_button);
+        alarm_preset_box.add(&stop_button);
+        if !is_preset.to_owned() { alarm_preset_box.add(&save_button) }
+        alarm_preset_box.show_all();
+        stop_button.hide();
     }
     alarm_preset_box
 }

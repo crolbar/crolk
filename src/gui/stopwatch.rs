@@ -1,6 +1,5 @@
 use std::time::{Duration, Instant};
 
-#[derive(Clone, Copy, Debug)]
 pub struct Stopwatch {
     start_time: Option<Instant>,
     elapsed: Duration,
@@ -20,12 +19,8 @@ impl Stopwatch {
     }
 
     pub fn start(&mut self) {
-        if !self.running {
-            self.start_time = Some(Instant::now());
-            self.running = true
-        } else {
-            println!("running can doi that")
-        }
+        self.start_time = Some(Instant::now());
+        self.running = true
     }
 
     pub fn get_elapsed(&mut self) -> String {

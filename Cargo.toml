@@ -7,10 +7,12 @@ categories = [ "gui" ]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gtk = "0.15"
 tray-item = { version = "0.8", features = [ "libappindicator" ] }
+gtk = "0.15"
 glib = "0.18.1"
-
 
 chrono = "0.4"
 notify-rust = "4.9"
+
+toml = "0.8"
+dirs = "3.0"

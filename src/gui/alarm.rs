@@ -2,54 +2,48 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use chrono::{Timelike, Local};
-use chrono::Datelike;
 use notify_rust::Notification;
-use std::thread;
-
-
 
 pub struct Alarm {
-    id: u8,
     running: Arc<AtomicBool>,
-    target_time: u32,
+    target_time: Option<String>,
 }
 
 
 impl Alarm {
-    pub fn new(id: u8) -> Self {
+    pub fn new() -> Self {
         Alarm { 
-            id: id,
             running: Arc::new(AtomicBool::new(true)),
-            target_time: 0,
+            target_time: None,
         }
     }
 
-    pub fn start(&mut self, time: u32 ) {
+    pub fn start(&mut self, time: String ) {
         self.running = Arc::from(AtomicBool::new(true));
-        self.target_time = time;
+        self.target_time = Some(time);
         self.start_alarm()
     }
 
     pub fn stop(&mut self) {
         self.running.store(false, Ordering::Relaxed);
-        self.target_time = 0;
+        self.target_time = None;
     }
 
 
     fn start_alarm(&mut self) {
         let running_clone = self.running.clone();
-        let target_time_clone = self.target_time.clone();
+        let target_time_clone = self.target_time.clone().unwrap();
 
-       thread::spawn(move || {
+        std::thread::spawn(move || {
         let mut finished = false;
             while running_clone.load(Ordering::Relaxed) {
-                if target_time_clone == format!("{}{}{}", Local::now().hour(), Local::now().minute(), Local::now().weekday().number_from_monday()).parse::<u32>().expect("crash at trying to convert string time to u32 time") {
+                if target_time_clone == format!("{} {}", Local::now().hour(), Local::now().minute()) {
                     running_clone.store(false, Ordering::Relaxed); 
                     finished = true;
                 }
 
 
-                thread::sleep(Duration::from_millis(900));
+                std::thread::sleep(Duration::from_millis(800));
             }
             if finished {
                 Notification::new().summary("Alarm ran out!").icon("/usr/share/icons/Dracula/24/actions/colors-chromared.svg").show().unwrap();

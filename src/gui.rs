@@ -55,7 +55,7 @@ pub fn main(rx: mpsc::Receiver<bool>) {
 
 fn build_ui(window: &gtk::ApplicationWindow) {
     window.set_title("crolk");
-    window.set_default_size(400, 400);
+    window.set_default_size(427, 400);
     window.set_widget_name("window");
     window.connect_delete_event(|window, _| window.hide_on_delete());
 
@@ -264,6 +264,7 @@ fn build_ui(window: &gtk::ApplicationWindow) {
                 }
             } 
 
+
             let button_add_box = gtk::Box::new(Orientation::Horizontal, 0);
             {
                 let button_add = gtk::Button::with_label("+");
@@ -354,24 +355,26 @@ fn build_ui(window: &gtk::ApplicationWindow) {
     window.show();
 
 
-    clock_box.hide();
-    timer_box.hide();
     stopwatch_box.hide();
+    timer_box.hide();
+    alarm_box.hide();
 
 
 
     glib::timeout_add_local(std::time::Duration::from_millis(80), move || {
-    // CLOCK
-        clock_label.set_text(&current_time().as_str());
+        if main_box.is_visible() {
+        // CLOCK
+            clock_label.set_text(&current_time().as_str());
 
-    // STOPWATCH
-        stopwatch_label.set_text(stopwatch.lock().unwrap().borrow_mut().get_elapsed().as_str());
+        // STOPWATCH
+            stopwatch_label.set_text(stopwatch.lock().unwrap().borrow_mut().get_elapsed().as_str());
 
-    // TIMER
-        let timer = arc_timer.lock().unwrap();
-        timer_label.set_text(timer.get_remaining_time().as_str());
-        if timer.get_remaining_time() == "00:00:00" { t_button_start.show(); t_button_stop.hide(); t_button_pause.hide() }
-
+        // TIMER
+            let timer = arc_timer.lock().unwrap();
+            timer_label.set_text(timer.get_remaining_time().as_str());
+            if timer.get_remaining_time() == "00:00:00" { t_button_start.show(); t_button_stop.hide(); t_button_pause.hide() }
+        } 
+        
         glib::ControlFlow::Continue
     });
 }
@@ -385,7 +388,7 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
         let hours_comb = gtk::ComboBoxText::new();
         let hour_label = gtk::Label::new(Some("H"));
         hour_label.set_widget_name("t_label");
-        for i in 0..=24 { hours_comb.append_text(i.to_string().as_str()); }
+        for i in 1..=12 { hours_comb.append_text(i.to_string().as_str()); }
 
         let min_comb = gtk::ComboBoxText::new();
         let min_label = gtk::Label::new(Some("M"));
@@ -395,13 +398,37 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
         hours_comb.set_active(Some(hour));
         min_comb.set_active(Some(min));
 
+        let pm_am_button = gtk::Button::with_label("AM");
         let stop_button = gtk::Button::with_label("Stop");
         let start_button = gtk::Button::with_label("Start");
         let del_button = gtk::Button::with_label("-");
         let save_button = gtk::Button::with_label("Save");
 
-        start_button.connect_clicked(clone!(@strong stop_button, @strong arc_alarm, @strong hours_comb, @strong min_comb => move |start_button| {
-            let time = format!("{} {}", hours_comb.active_text().unwrap(), min_comb.active_text().unwrap());
+
+        pm_am_button.set_widget_name("pm_am_button");
+        pm_am_button.set_tooltip_text(Some("switch between am and pm"));
+        pm_am_button.connect_clicked(move |pm_am_button| {
+            pm_am_button.set_label(if pm_am_button.label().unwrap() == "AM" { "PM" } else { "AM" });
+        });
+
+        start_button.connect_clicked(clone!(@strong stop_button, @strong arc_alarm, @strong hours_comb, @strong min_comb, @strong pm_am_button => move |start_button| {
+            let hour = match (hours_comb.active_text().unwrap().as_str(), pm_am_button.label().unwrap().as_str()) {
+                ("1", "PM") => 13, ("1", "AM") => 1,
+                ("2", "PM") => 14, ("2", "AM") => 2,
+                ("3", "PM") => 15, ("3", "AM") => 3,
+                ("4", "PM") => 16, ("4", "AM") => 4,
+                ("5", "PM") => 17, ("5", "AM") => 5,
+                ("6", "PM") => 18, ("6", "AM") => 6,
+                ("7", "PM") => 19, ("7", "AM") => 7,
+                ("8", "PM") => 20, ("8", "AM") => 8,
+                ("9", "PM") => 21, ("9", "AM") => 9,
+                ("10", "PM") => 22, ("10", "AM") => 10,
+                ("11", "PM") => 23, ("11", "AM") => 11,
+                ("12", "PM") => 12, ("12", "AM") => 0,
+                _ => { println!("Invalid hour time"); return }
+            };
+
+            let time = format!("{} {}", hour, min_comb.active_text().unwrap());
             arc_alarm.lock().unwrap().start(time);
             
             glib::timeout_add_local(std::time::Duration::from_millis(800),clone!(@strong start_button, @strong stop_button, @strong arc_alarm => move || match arc_alarm.lock().unwrap().get_state() {
@@ -427,6 +454,7 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
 
 
         let key_num = Arc::new(std::sync::atomic::AtomicU32::new(key_num.parse::<u32>().unwrap()));
+        save_button.set_widget_name("save_button");
         save_button.connect_clicked(clone!(@strong hours_comb, @strong min_comb, @strong key_num => move |save_button| {
             let hour = hours_comb.active_text().unwrap();
             let min = min_comb.active_text().unwrap();
@@ -458,6 +486,7 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
             
 
         alarm_preset_box.add(&del_button);
+        alarm_preset_box.add(&pm_am_button);
         alarm_preset_box.add(&hours_comb);
         alarm_preset_box.add(&hour_label);
         alarm_preset_box.add(&min_comb);

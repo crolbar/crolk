@@ -23,11 +23,16 @@ button {
     color: white;
 }
 
+#pm_am_button {
+    font-size: 0.8rem;
+    border: transparent;
+}
+
 #t_label {
-    margin-right: 25px;
+    margin-right: 20px;
     margin-left: -25px;
 }
 
-#del_button {
-    margin-right: 30px;
+#save_button {
+    margin-left: 20px;
 }

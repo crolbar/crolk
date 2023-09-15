@@ -431,7 +431,8 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
             let time = format!("{} {}", hour, min_comb.active_text().unwrap());
             arc_alarm.lock().unwrap().start(time);
             
-            glib::timeout_add_local(std::time::Duration::from_millis(800),clone!(@strong start_button, @strong stop_button, @strong arc_alarm => move || match arc_alarm.lock().unwrap().get_state() {
+            glib::timeout_add_local(std::time::Duration::from_millis(800),clone!(@strong start_button, @strong stop_button, @strong arc_alarm 
+            => move || match arc_alarm.lock().unwrap().get_state() {
                 true => glib::ControlFlow::Continue,
                 false => {
                     stop_button.hide();
@@ -447,7 +448,6 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
 
         stop_button.connect_clicked(clone!(@strong start_button, @strong arc_alarm => move |stop_button| {
             arc_alarm.lock().unwrap().stop();
-            
             stop_button.hide();
             start_button.show()
         }));

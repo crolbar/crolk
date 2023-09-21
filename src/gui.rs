@@ -466,7 +466,7 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
 
             save_button.hide();
         }));
-        
+         
         del_button.set_widget_name("del_button");
         del_button.connect_clicked(clone!(@strong alarm_preset_box, @strong arc_alarm, @strong key_num => move |_| {
             unsafe { alarm_preset_box.destroy() }

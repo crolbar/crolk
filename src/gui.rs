@@ -258,7 +258,8 @@ fn build_ui(window: &gtk::ApplicationWindow) {
                         entry.get("hour").and_then(|v| v.as_integer()),
                         entry.get("min").and_then(|v| v.as_integer()),
                     ) {
-                        let alarm_preset_box = create_alarm_box(hour as u32, min as u32, true, key.clone());
+                        let is_pm = hour > 11;
+                        let alarm_preset_box = create_alarm_box(hour as u32, min as u32, true, key.clone(), is_pm);
                         alarm_box.add(&alarm_preset_box);
                     } 
                 }
@@ -269,7 +270,7 @@ fn build_ui(window: &gtk::ApplicationWindow) {
             {
                 let button_add = gtk::Button::with_label("+");
                 button_add.connect_clicked(clone!(@strong alarm_box, @strong button_add_box => move |_| {
-                    let alarm_preset_box = create_alarm_box(0, 0, false, String::from("0"));
+                    let alarm_preset_box = create_alarm_box(0, 0, false, String::from("0"), false);
                     alarm_box.add(&alarm_preset_box);
                     alarm_box.remove(&button_add_box);
                     alarm_box.add(&button_add_box);
@@ -380,7 +381,7 @@ fn build_ui(window: &gtk::ApplicationWindow) {
 }
 
 
-fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gtk::Box {
+fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String, is_pm: bool) -> gtk::Box {
     let alarm = Alarm::new();
     let arc_alarm = Arc::new(Mutex::new(alarm));
     let alarm_preset_box = gtk::Box::new(Orientation::Horizontal, 5);
@@ -395,7 +396,9 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
         min_label.set_widget_name("t_label");
         for i in 0..=59 { min_comb.append_text(i.to_string().as_str()); }
 
-        hours_comb.set_active(Some(hour));
+        let hour_comb_text = if is_pm { match hour { 12 => 11, 13 => 0, 14 => 1, 15 => 2, 16 => 3, 17 => 4, 18 => 5,  19 => 6, 20 => 7, 21 => 8, 22 => 9, 23 => 10, _ => 0 } } else { match hour { 0 => 11, _ => hour - 1} };
+
+        hours_comb.set_active(Some(hour_comb_text));
         min_comb.set_active(Some(min));
 
         let pm_am_button = gtk::Button::with_label("AM");
@@ -410,6 +413,8 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
         pm_am_button.connect_clicked(move |pm_am_button| {
             pm_am_button.set_label(if pm_am_button.label().unwrap() == "AM" { "PM" } else { "AM" });
         });
+        if is_pm { pm_am_button.set_label("PM") };
+
 
         start_button.connect_clicked(clone!(@strong stop_button, @strong arc_alarm, @strong hours_comb, @strong min_comb, @strong pm_am_button => move |start_button| {
             let hour = match (hours_comb.active_text().unwrap().as_str(), pm_am_button.label().unwrap().as_str()) {
@@ -455,8 +460,23 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String) -> gt
 
         let key_num = Arc::new(std::sync::atomic::AtomicU32::new(key_num.parse::<u32>().unwrap()));
         save_button.set_widget_name("save_button");
-        save_button.connect_clicked(clone!(@strong hours_comb, @strong min_comb, @strong key_num => move |save_button| {
-            let hour = hours_comb.active_text().unwrap();
+        save_button.connect_clicked(clone!(@strong hours_comb, @strong min_comb, @strong key_num, @strong pm_am_button => move |save_button| {
+            let hour = match (hours_comb.active_text().unwrap().as_str(), pm_am_button.label().unwrap().as_str()) {
+                ("1", "PM") => 13, ("1", "AM") => 1,
+                ("2", "PM") => 14, ("2", "AM") => 2,
+                ("3", "PM") => 15, ("3", "AM") => 3,
+                ("4", "PM") => 16, ("4", "AM") => 4,
+                ("5", "PM") => 17, ("5", "AM") => 5,
+                ("6", "PM") => 18, ("6", "AM") => 6,
+                ("7", "PM") => 19, ("7", "AM") => 7,
+                ("8", "PM") => 20, ("8", "AM") => 8,
+                ("9", "PM") => 21, ("9", "AM") => 9,
+                ("10", "PM") => 22, ("10", "AM") => 10,
+                ("11", "PM") => 23, ("11", "AM") => 11,
+                ("12", "PM") => 12, ("12", "AM") => 0,
+                _ => { println!("Invalid hour time"); return }
+            };
+
             let min = min_comb.active_text().unwrap();
             let file_path = home_dir().unwrap().join(".config/crolk/presets.toml");
             let key = io::BufReader::new(File::open(&file_path).unwrap()).lines().last().unwrap_or_else(|| Ok("0 ".to_string())).unwrap().split_once(" ").unwrap().0.parse::<u32>().unwrap();

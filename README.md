@@ -12,7 +12,6 @@ No binary installations avaliable
 ```
 yay -S crolk-git
 ```
-<br>
 
 ### Manual Build and install
 ```

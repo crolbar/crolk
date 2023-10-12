@@ -7,6 +7,7 @@ Crolk is a simple gui clock, stopwatch, timer, alarm app made with gtk-rs.
 No binary installations avaliable
 
 ## Linux
+- there is one optional dependency `dracula-icons-git` that is used for the icon
 
 ### Build and install from the AUR
 ```

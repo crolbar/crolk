@@ -1,12 +1,12 @@
 use gtk::{gdk, gio, Button, Orientation, prelude::*};
-use gtk::traits::LabelExt;
-use std::sync::{Arc, Mutex, mpsc};
-use std::cell::RefCell;
-use glib::clone;
 use std::fs::{self, read_to_string, File};
-use toml::Value;
-use dirs::home_dir;
 use std::io::{self, Write, BufRead};
+use std::sync::{Arc, Mutex, mpsc};
+use gtk::traits::LabelExt;
+use std::cell::RefCell;
+use dirs::home_dir;
+use glib::clone;
+use toml::Value;
 
 mod stopwatch;
 use stopwatch::Stopwatch;
@@ -396,9 +396,9 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String, is_pm
         min_label.set_widget_name("t_label");
         for i in 0..=59 { min_comb.append_text(i.to_string().as_str()); }
 
-        let hour_comb_text = if is_pm { match hour { 12 => 11, 13 => 0, 14 => 1, 15 => 2, 16 => 3, 17 => 4, 18 => 5,  19 => 6, 20 => 7, 21 => 8, 22 => 9, 23 => 10, _ => 0 } } else { match hour { 0 => 11, _ => hour - 1} };
+        let hour_comb_text_index = if is_pm { (hour % 12) - 1 } else { match hour { 0 => 11, _ => hour - 1 } };
 
-        hours_comb.set_active(Some(hour_comb_text));
+        hours_comb.set_active(Some(hour_comb_text_index));
         min_comb.set_active(Some(min));
 
         let pm_am_button = gtk::Button::with_label("AM");
@@ -521,5 +521,5 @@ fn create_alarm_box(hour: u32, min: u32, is_preset: bool, key_num: String, is_pm
 }
 
 fn current_time() -> String {
-    format!("{}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"))
+    format!("{}", chrono::Local::now().format("%Y-%m-%d %I:%M:%S %p"))
 }

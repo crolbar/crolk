@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=crolk
+Comment=clock
+Exec=/usr/bin/crolk
+Icon=/usr/share/icons/Dracula/24/actions/colors-chromared.svg
+Terminal=false
+Categories=Utility;

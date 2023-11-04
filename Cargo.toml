@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tray-item = { version = "0.8", features = [ "libappindicator" ] }
-gtk = "0.15"
+tray-item = { version = "0.9", features = [ "libappindicator" ] }
+gtk = "0.18"
 glib = "0.18.1"
 
 chrono = "0.4"

@@ -6,6 +6,7 @@ mod gui;
 fn main() {    
     let (tx, rx) = mpsc::sync_channel::<bool>(2);
 
+
     let tray = std::thread::spawn(move || {
     gtk::init().unwrap();
         let mut tray = TrayItem::new("Crolk", IconSource::Resource("colors-chromared")).unwrap();

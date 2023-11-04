@@ -1,6 +1,5 @@
 use tray_item::{TrayItem, IconSource};
 use std::sync::mpsc;
-
 mod gui;
 
 fn main() {    
